@@ -29,12 +29,17 @@ void loop() {
   potVal = analogRead(potPin);
   buttonPress = digitalRead(buttonPin);
   Serial.println(buttonPress);
-  selectColour(potVal);
-  pixels.show();
-  delay(25);
+  if (buttonPress == 1){
+    selectColour(potVal, buttonPress);
+    pixels.show();
+    delay(25);
+  }
+  else {
+    
+  }
 }
 
-void selectColour(int potVal) {
+void selectColour(int potVal, int buttonPress) {
   switch(potVal){
     case 0 ... 145:
       Serial.println("red");
