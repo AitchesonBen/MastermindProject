@@ -5,6 +5,7 @@
 
 int buttonPin = 7;
 
+//first state machine
 #define ST_FIRSTLAUNCH 0
 #define ST_SINGLEPLAYER 1
 #define ST_MULTIPLAYER 2
@@ -13,8 +14,21 @@ int buttonPin = 7;
 #define ST_HARD 5
 #define ST_PLAYERSELECT 6
 #define ST_DIFFICULTIES 7
-
 int machine_state;
+
+//second state machine
+#define ST_NOTSTARTED 0
+#define ST_START 1
+#define ST_PLAYERSTURN 2
+int game_state = 1;
+String difficulty;
+int mode;
+
+//3rd state to manage other states
+#define ST_MACHINE 1
+#define ST_GAME 2
+int states = 1;
+
 int sensorValue;
 int buttonState;
 
@@ -38,10 +52,21 @@ void setup() {
 void loop() {
   // put your main code here, to run repeatedly:
   States();
+  Serial.println(game_state);
 }
 
-void States()
-{
+void States() {
+  switch(states) {
+    case ST_MACHINE:
+      Machine_States();
+      break;
+    case ST_GAME:
+      Game_States();
+      break;
+  }
+}
+
+void Machine_States() {
   switch(machine_state) {
     case ST_FIRSTLAUNCH:
       TimeMessage("Select amount", "of players!");
@@ -49,42 +74,52 @@ void States()
       break;
 
     case ST_SINGLEPLAYER:
+      mode = ST_SINGLEPLAYER;
       TimeMessage("Selected", "1 Player");
       Difficulties();   
       break;
 
     case ST_MULTIPLAYER:
+      mode = ST_MULTIPLAYER;
       TimeMessage("Selected", "2 Player");
       Difficulties();   
       break;
 
     case ST_EASY:
+      difficulty = "Easy";
       TimeMessage("Selected", "Easy mode");
-      Game();
+      states = 2;
       break;
 
     case ST_MEDIUM:
+      difficulty = "Medium";
       TimeMessage("Selected", "Medium mode");
-      Game();
+      states = 2;
       break;
 
     case ST_HARD:
-      TimeMessage("Selected", "Hard mode");
-      Game();
+      difficulty = "Hard";
+      TimeMessage("Selected", "Hard mode"); 
+      states = 2;
       break;
   }
 }
 
-void Rules() {
-  TimeMessage("Mastermind", "Rules");
-  TimeMessage("First pick", "1 or 2 player");
-  TimeMessage("Difficulty", "Pick one of 3");
-  TimeMessage("Player A", "Will pick colours");
-  TimeMessage("Using switch", "and button");
-  TimeMessage("Player B will", "guess colours");
-  TimeMessage("After attempt", "This screen will:");
-  TimeMessage("Tell whats right", "and whats wrong");
-  TimeMessage("Guess until", "you can win!");
+void Game_States() {
+  switch(game_state) {
+      case ST_START:
+        Game();
+        break;
+      case ST_PLAYERSTURN:
+        Send_Arduino();
+        break;
+  }
+}
+
+void Game() {
+  TimeMessage("Game will", "START!");
+  TimeMessage("Difficulty:", difficulty);
+  game_state = ST_PLAYERSTURN;
 }
 
 void PlayerSelect() {
@@ -141,8 +176,25 @@ void Difficulties() {
   lcd.clear();
 }
 
-void Game() {
-  TimeMessage("Game will", "START!");
+void Send_Arduino() {
+  TimeMessage("GO", "PLAYER");
+  Wire.beginTransmission(8);
+  Wire.write("Difficulty is: ");
+  Wire.write(machine_state);
+  Wire.endTransmission();
+  delay(1000);
+}
+
+void Rules() {
+  TimeMessage("Mastermind", "Rules");
+  TimeMessage("First pick", "1 or 2 player");
+  TimeMessage("Difficulty", "Pick one of 3");
+  TimeMessage("Player A", "Will pick colours");
+  TimeMessage("Using switch", "and button");
+  TimeMessage("Player B will", "guess colours");
+  TimeMessage("After attempt", "This screen will:");
+  TimeMessage("Tell whats right", "and whats wrong");
+  TimeMessage("Guess until", "you can win!");
 }
 
 void TimeMessage(String line1, String line2) {
