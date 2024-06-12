@@ -1,9 +1,13 @@
 #include <Wire.h>
 #include <Adafruit_NeoPixel.h>
-#include <LiquidCrystal.h>
 #include <LiquidCrystal_I2C.h>
 
 int buttonPin = 7;
+
+#define PIN 6
+#define NUMPIXELS 5
+
+Adafruit_NeoPixel pixels(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800);
 
 //first state machine
 #define ST_FIRSTLAUNCH 0
@@ -27,18 +31,39 @@ int mode;
 //3rd state to manage other states
 #define ST_MACHINE 1
 #define ST_GAME 2
+#define ST_CHOOSECOLOUR 3
 int states = 1;
+
+//4th state machine to control LEDs
+#define ST_SELECT_COLOUR 1
+#define ST_GUESS_COLOUR 2
+#define ST_SEND_COLOUR 3
+int led_state;
 
 int sensorValue;
 int buttonState;
+int led = 0;
 
 #define I2C_ADDR 0x27
-
 //LiquidCrystal lcd(13, 12, 11, 10, 9, 8);
 LiquidCrystal_I2C lcd(I2C_ADDR, 16, 2);
 
+uint32_t playerGuess[4] = {};     // store players colour guesses
+uint32_t playerColourGuess;
+
+//Colours
+uint32_t RED = pixels.Color(255, 0, 0);
+uint32_t BLUE = pixels.Color(0, 0, 255);
+uint32_t YELLOW = pixels.Color(255, 255, 0);
+uint32_t GREEN = pixels.Color(0, 255, 0);
+uint32_t ORANGE = pixels.Color(255, 125, 0);
+uint32_t PINK = pixels.Color(255, 0, 255);
+uint32_t PURPLE = pixels.Color(125, 0, 255);
+
 void setup() {
   // put your setup code here, to run once:
+  pixels.begin();
+  pixels.setBrightness(64);
   machine_state = ST_FIRSTLAUNCH;
   pinMode(buttonPin, INPUT_PULLUP);
   lcd.begin(16, 2);
@@ -60,8 +85,13 @@ void States() {
     case ST_MACHINE:
       Machine_States();
       break;
+
     case ST_GAME:
       Game_States();
+      break;
+
+    case ST_CHOOSECOLOUR:
+      Colour_States();
       break;
   }
 }
@@ -105,6 +135,29 @@ void Machine_States() {
   }
 }
 
+void Colour_States() {
+  switch(led_state) {
+    case ST_SELECT_COLOUR:
+      SelectColour();
+      pixels.show();
+      delay(25);
+      if (buttonPress == 0) {
+        machine_state = ST_GUESS_COLOUR;
+      }
+      break;
+
+    case ST_GUESS_COLOUR:
+      playerGuess[led] = playerColourGuess;
+      pixels.setPixelColor(led, playerGuess[led]);
+      led += 1;
+      delay(2000);
+      if (buttonPress == 1) {
+        machine_state = ST_SELECT_COLOUR;
+      }
+      break;
+  }
+}
+
 void Game_States() {
   switch(game_state) {
       case ST_START:
@@ -143,6 +196,45 @@ void PlayerSelect() {
     }
   }
   lcd.clear();
+}
+
+void SelectColour() {
+  switch(sensorValue) {
+    case 0 ... 145:
+      pixels.setPixelColor(led, RED);
+      playerColourGuess = RED;
+      break;
+    
+    case 146 ... 291:
+      pixels.setPixelColor(led, BLUE);
+      layerColourGuess = BLUE;
+      break;
+
+    case 292 ... 437:
+      pixels.setPixelColor(led, YELLOW);
+      layerColourGuess = YELLOW;
+      break;
+
+    case 438 ... 583:
+      pixels.setPixelColor(led, GREEN);
+      layerColourGuess = GREEN;
+      break;
+
+    case 584 ... 729:
+      pixels.setPixelColor(led, ORANGE);
+      layerColourGuess = ORANGE;
+      break;
+
+    case 730 ... 875:
+      pixels.setPixelColor(led, PINK);
+      layerColourGuess = PINK;
+      break;
+
+    case 876 ... 1023:
+      pixels.setPixelColor(led, PURPLE);
+      layerColourGuess = PURPLE;
+      break;
+  }
 }
 
 void Difficulties() {
