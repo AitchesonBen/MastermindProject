@@ -51,6 +51,7 @@ LiquidCrystal_I2C lcd(I2C_ADDR, 16, 2);
 
 uint32_t playerGuess[4] = {};     // store players colour guesses
 uint32_t playerColourGuess;
+int numbers[4];
 
 //Colours
 uint32_t RED = pixels.Color(255, 0, 0);
@@ -204,8 +205,43 @@ void Game_States() {
         Game();
         break;
       case ST_PLAYERSTURN:
+        Translate_Colours();
         Send_Arduino();
         break;
+  }
+}
+
+void Translate_Colours() {
+  for (int i = 0; i < 4; i++) {
+    numbers[i] = Numbers_Colours(playerGuess[i + 1]);
+  }
+}
+
+void compareNumbers (int received[], int numbers[], int &correctPlace, int &wrongPlace) {
+  correctPlace = 0;
+  wrongPlace = 0;
+
+  bool checkedReceived[4]= { false };
+  bool checkedPredefined[4] = { false };
+
+  for (int i = 0; i < 4; i++) {
+    if (received[i] == numbers[i]) {
+      correctPlace++;
+      checkedReceived[i] = true;
+      checkedPredefined[i] = true;
+    }
+  }
+
+  for (int i = 0; i < 4; i++) {
+    if (!checkedReceived[i]) {
+      for (int j = 0; j < 4; j++) {
+        if (!checkedPredefined[j] && received[i] == numbers[j]) {
+          wrongPlace++;
+          checkedPredefined[j] = true;
+          break;
+        }
+      }
+    }
   }
 }
 
@@ -324,7 +360,35 @@ void Send_Arduino() {
   Wire.write("Difficulty is: ");
   Wire.write(machine_state);
   Wire.endTransmission();
+  for (int i =0; i < 4; i++) {
+    Serial.println(numbers[i]);
+  }
+  int correctPlace, wrongPlace;
+  int tempNumbers[] = {1, 2, 3, 4};
+  compareNumbers(tempNumbers, numbers, correctPlace, wrongPlace);
+  TimeMessage("Correct place:", String(correctPlace));
+  TimeMessage("Wrong place:", String(wrongPlace));
   delay(1000);
+}
+
+int Numbers_Colours(uint32_t color) {
+  if (color == RED) return 1;
+  if (color == BLUE) return 2;
+  if (color == YELLOW) return 3;
+  if (color == GREEN) return 4;
+  if (color == ORANGE) return 5;
+  if (color == PINK) return 6;
+  return -1;
+}
+
+uint32_t Colours_Numbers(int number) {
+  if (number == 1) return RED;
+  if (number == 2) return BLUE;
+  if (number == 3) return YELLOW;
+  if (number == 4) return GREEN;
+  if (number == 5) return ORANGE;
+  if (number == 6) return PINK;
+  return NULL;
 }
 
 void Rules() {
