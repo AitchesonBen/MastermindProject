@@ -24,6 +24,7 @@ int machine_state;
 #define ST_NOTSTARTED 0
 #define ST_START 1
 #define ST_PLAYERSTURN 2
+#define ST_ENDING 3
 int game_state = 1;
 String difficulty;
 int mode;
@@ -62,7 +63,6 @@ uint32_t ORANGE = pixels.Color(255, 125, 0);
 uint32_t PINK = pixels.Color(255, 0, 255);
 
 void setup() {
-  // put your setup code here, to run once:
   pixels.begin();
   pixels.setBrightness(64);
   pixels.clear();
@@ -80,9 +80,7 @@ void setup() {
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
   States();
-  // Serial.println(led_state);
 }
 
 void States() {
@@ -208,6 +206,10 @@ void Game_States() {
         Translate_Colours();
         Send_Arduino();
         break;
+
+      case ST_ENDING:
+        Winner();
+        break;
   }
 }
 
@@ -312,7 +314,6 @@ void Random_Colours() {
   int temp;
   for (int i=1; i < 5; i++) {
     temp = random(1024);
-    Serial.println(temp);
     SelectColour(temp, led);
     pixels.show();
     playerGuess[led] = playerColourGuess;
@@ -346,7 +347,6 @@ void Difficulties() {
       Message("Difficulty:", "Hard  ");
       if (buttonState == 0) {
         machine_state = ST_HARD;
-        Serial.println(ST_HARD);
         loop = false;
       }
     }
@@ -368,6 +368,9 @@ void Send_Arduino() {
   compareNumbers(tempNumbers, numbers, correctPlace, wrongPlace);
   TimeMessage("Correct place:", String(correctPlace));
   TimeMessage("Wrong place:", String(wrongPlace));
+  if (correctPlace == 4) {
+    game_state = ST_ENDING;
+  }
   delay(1000);
 }
 
@@ -417,4 +420,8 @@ void Message(String line1, String line2) {
   lcd.print(line1);
   lcd.setCursor(0, 1);
   lcd.print(line2);
+}
+
+void Winner() {
+  TimeMessage("YOU WON!", "GOOD JOB!");
 }
