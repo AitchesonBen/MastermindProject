@@ -171,13 +171,12 @@ void Colour_States() {
     case ST_GUESS_COLOUR:
       Message("Pick the", "Colours");
       playerGuess[led] = playerColourGuess;
-      Serial.println(playerGuess[led]);
       pixels.setPixelColor(led, playerGuess[led]);
       led += 1;
       if (led == 5) {
         states = 2;
       }
-      delay(2000);
+      delay(500);
       break;
   }
 }
