@@ -1,10 +1,14 @@
 #include <Adafruit_NeoPixel.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_NeoMatrix.h>
 #include <Wire.h>
 
 #define PIN 6
-#define NUMPIXELS 9
 
-Adafruit_NeoPixel pixels(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800);
+Adafruit_NeoMatrix matrix = Adafruit_NeoMatrix(4, 6, PIN,
+  NEO_MATRIX_TOP     + NEO_MATRIX_RIGHT +
+  NEO_MATRIX_COLUMNS + NEO_MATRIX_ZIGZAG,
+  NEO_GRB            + NEO_KHZ800);
 
 #define ST_SELECT_COLOUR 1
 #define ST_GUESS_COLOUR 2
@@ -15,41 +19,44 @@ int potPin = A0;                  // potentiometer control
 int potVal = 0;
 int buttonPin = 2;                // button control
 int buttonPress = 0;
-int led = 0;                      // current led place
+int column = 0;                   // coordinates for led matrix
+int row = 0;
 uint32_t playerGuess[4] = {};     // store players colour guesses
 uint32_t playerColourGuess;
+
+int tempNumbers[4] = {1, 2, 3, 4};
+int numbers[4];
 
 int difficulty = 0;
 
 void setup() {
-  pixels.begin();
   Serial.begin(9600);
-  pixels.setBrightness(64);
+  matrix.begin();
+  matrix.setBrightness(25);
   pinMode(buttonPin, INPUT_PULLUP);
-
-  Wire.begin(8);                // join I2C bus with address #8
-  Wire.onReceive(receiveEvent); // register event
+  Wire.begin(8);                 // join I2C bus with address #8
+  Wire.onReceive(Receive_Event); // register event
 
   machine_state = ST_SELECT_COLOUR;
 }
 
-uint32_t RED = pixels.Color(255, 0, 0);
-uint32_t BLUE = pixels.Color(0, 0, 255);
-uint32_t YELLOW = pixels.Color(255, 255, 0);
-uint32_t GREEN = pixels.Color(0, 255, 0);
-uint32_t ORANGE = pixels.Color(255, 125, 0);
-uint32_t PINK = pixels.Color(255, 0, 255);
-uint32_t PURPLE = pixels.Color(125, 0, 255);
+uint32_t RED = 0xf800;
+uint32_t BLUE = 0x001f;
+uint32_t YELLOW = 0xffe0;
+uint32_t GREEN = 0x07e0;
+uint32_t ORANGE = 0xfbe0;
+uint32_t PINK = 0xf81f;
+
 
 void loop() {
   potVal = analogRead(potPin);
   buttonPress = digitalRead(buttonPin);
-  stateStuff();
-  stateTransition();
+  State_Stuff();
+  State_Transition();
   delay(100);
 }
 
-void receiveEvent(int howMany) {
+void Receive_Event(int howMany) {
   while (1 < Wire.available()) { // loop through all but the last
     char c = Wire.read();        // receive byte as a character
     Serial.print(c);             // print the character
@@ -57,21 +64,24 @@ void receiveEvent(int howMany) {
   int x = Wire.read();           // receive byte as an integer
   difficulty = x;
   Serial.println(x);             // print the integer
+  for (int i = 0; i < 4; i++) {
+    // Wire.write((byte*)&tempNumbers[i], sizeof(tempNumbers[i]));
+    Wire.write(tempNumbers[i]);
+    Serial.println(tempNumbers[i]);
+  }
 }
 
-void stateStuff() {
+void State_Stuff() {
   switch(machine_state) {
     case ST_SELECT_COLOUR:
-      selectColour(potVal, buttonPress, led);
-      pixels.show();
-      delay(25);
+      Select_Colour(potVal, column, row);
+      matrix.show();
       break;
     case ST_GUESS_COLOUR:
-      playerGuess[led] = playerColourGuess;
-      Serial.println(playerGuess[led]);
-      pixels.setPixelColor(led, playerGuess[led]);
-      led += 1;
-      delay(2000);
+      playerGuess[column] = playerColourGuess;
+      // Serial.println(playerGuess[column]);
+      matrix.writePixel(column, row, playerGuess[column]);
+      column += 1;
       break;
 
     default:
@@ -80,7 +90,7 @@ void stateStuff() {
   }
 }
 
-void stateTransition(){
+void State_Transition(){
   switch(machine_state) {
     case ST_SELECT_COLOUR:
       if (buttonPress == 0) {
@@ -89,10 +99,14 @@ void stateTransition(){
       break;
     case ST_GUESS_COLOUR:
       if (buttonPress == 1) {
+        Serial.println(column);
+        Serial.println(row);
         machine_state = ST_SELECT_COLOUR;
       }
-      if (led <=4) {
-        machine_state = 
+      if (column == 4) {
+        row += 1;
+        column = 0;
+        machine_state = ST_SELECT_COLOUR;
       }
       break;
 
@@ -102,50 +116,54 @@ void stateTransition(){
   }
 }
 
-void selectColour(int potVal, int buttonPress, int currentLED) {
-  switch(potVal){
-    case 0 ... 145:
-      Serial.println("red");
-      // pixels.fill(RED);
-      pixels.setPixelColor(currentLED, RED);
+int Numbers_Colours(uint32_t color) {
+  if (color == RED) return 1;
+  if (color == BLUE) return 2;
+  if (color == YELLOW) return 3;
+  if (color == GREEN) return 4;
+  if (color == ORANGE) return 5;
+  if (color == PINK) return 6;
+  return -1;
+}
+
+void Translate_Colours() {
+  for (int i = 0; i < 4; i++) {
+    numbers[i] = Numbers_Colours(playerGuess[i + 1]);
+  }
+}
+
+void Select_Colour(int potVal, int currentColumn, int currentRow) {
+  switch(potVal) {
+    case 0 ... 171:
+      matrix.writePixel(currentColumn, currentRow, RED);
       playerColourGuess = RED;
       break;
-    case 146 ... 291:
-      Serial.println("blue");
-      // pixels.fill(BLUE);
-      pixels.setPixelColor(currentLED, BLUE);
+    
+    case 172 ... 342:
+      matrix.writePixel(currentColumn, currentRow, BLUE);
       playerColourGuess = BLUE;
       break;
-    case 292 ... 437:
-      Serial.println("yellow");
-      // pixels.fill(YELLOW);
-      pixels.setPixelColor(currentLED, YELLOW);
+
+    case 343 ... 513:
+      matrix.writePixel(currentColumn, currentRow, YELLOW);
       playerColourGuess = YELLOW;
       break;
-    case 438 ... 583:
-      Serial.println("green");
-      // pixels.fill(GREEN);
-      pixels.setPixelColor(currentLED, GREEN);
+
+    case 514 ... 684:
+      matrix.writePixel(currentColumn, currentRow, GREEN);
       playerColourGuess = GREEN;
       break;
-    case 584 ... 729:
-      Serial.println("orange");
-      // pixels.fill(ORANGE);
-      pixels.setPixelColor(currentLED, ORANGE);
+
+    case 685 ... 855:
+      matrix.writePixel(currentColumn, currentRow, ORANGE);
       playerColourGuess = ORANGE;
       break;
-    case 730 ... 875:
-      Serial.println("pink");
-      // pixels.fill(PINK);
-      pixels.setPixelColor(currentLED, PINK);
+
+    case 856 ... 1023:
       playerColourGuess = PINK;
+      matrix.writePixel(currentColumn, currentRow, PINK);
       break;
-    case 876 ... 1023:
-      Serial.println("purple"); 
-      // pixels.fill(PURPLE);
-      pixels.setPixelColor(currentLED, PURPLE);
-      playerColourGuess = PURPLE;
-      break;
+
     default:
       Serial.println("OUT OF RANGE");
       break;
