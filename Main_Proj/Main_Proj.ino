@@ -383,14 +383,14 @@ void Send_Arduino() {
 
 void Wait_Arduino() {
   TimeMessage("GO", "PLAYER!!");
-  Wire.requestFrom(8, 6);
+  Wire.requestFrom(8, 4);
   while (Wire.available()) {
     for (int i = 0; i < 4; i++) {
       // Wire.readBytes((char*)&recievedInputFromArduino[i], sizeof(int));
       int c = Wire.read();
       recievedInputFromArduino[i] = c;
+      Serial.println(recievedInputFromArduino[i]);
     }
-    Serial.println(recievedInputFromArduino[0]);
   }
   bool isFilled = true;
   for (int i = 0; i < 4; i++) {

@@ -29,6 +29,8 @@ int numbers[4];
 
 int difficulty = 0;
 
+bool dr = false;
+
 void setup() {
   Serial.begin(9600);
   matrix.begin();
@@ -36,6 +38,7 @@ void setup() {
   pinMode(buttonPin, INPUT_PULLUP);
   Wire.begin(8);                 // join I2C bus with address #8
   Wire.onReceive(Receive_Event); // register event
+  Wire.onRequest(Request_Event);
 
   machine_state = ST_SELECT_COLOUR;
 }
@@ -64,10 +67,16 @@ void Receive_Event(int howMany) {
   int x = Wire.read();           // receive byte as an integer
   difficulty = x;
   Serial.println(x);             // print the integer
-  for (int i = 0; i < 4; i++) {
-    // Wire.write((byte*)&tempNumbers[i], sizeof(tempNumbers[i]));
-    Wire.write(tempNumbers[i]);
-    Serial.println(tempNumbers[i]);
+  dr = true;
+}
+
+void Request_Event() {
+  if (dr) {
+    for (int i = 0; i < 4; i++) {
+      Wire.write(tempNumbers[i]);
+      Serial.println(tempNumbers[i]);
+    }
+    dr = false;
   }
 }
 
