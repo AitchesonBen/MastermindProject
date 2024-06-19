@@ -30,6 +30,7 @@ int numbers[4];
 int difficulty = 0;
 
 bool dr = false;
+bool buttonPressed = false;
 
 void setup() {
   Serial.begin(9600);
@@ -38,7 +39,8 @@ void setup() {
   pinMode(buttonPin, INPUT_PULLUP);
   Wire.begin(8);                 // join I2C bus with address #8
   Wire.onReceive(Receive_Event); // register event
-  Wire.onRequest(Request_Event);
+  matrix.clear();
+  matrix.show();
 
   machine_state = ST_SELECT_COLOUR;
 }
@@ -54,9 +56,11 @@ uint32_t PINK = 0xf81f;
 void loop() {
   potVal = analogRead(potPin);
   buttonPress = digitalRead(buttonPin);
-  State_Stuff();
-  State_Transition();
-  delay(100);
+  if (dr) {
+    State_Stuff();
+    State_Transition();
+    delay(100);
+  }
 }
 
 void Receive_Event(int howMany) {
@@ -65,18 +69,22 @@ void Receive_Event(int howMany) {
     Serial.print(c);             // print the character
   }
   int x = Wire.read();           // receive byte as an integer
-  difficulty = x;
+  if (x == 9) {
+    dr = false;
+  } else {
+    difficulty = x;
+    dr = true;
+  }
   Serial.println(x);             // print the integer
-  dr = true;
 }
 
 void Request_Event() {
+  Translate_Colours();
   if (dr) {
     for (int i = 0; i < 4; i++) {
-      Wire.write(tempNumbers[i]);
-      Serial.println(tempNumbers[i]);
+      Wire.write(numbers[i]);
+      Serial.println(numbers[i]);
     }
-    dr = false;
   }
 }
 
@@ -91,6 +99,11 @@ void State_Stuff() {
       // Serial.println(playerGuess[column]);
       matrix.writePixel(column, row, playerGuess[column]);
       column += 1;
+      delay(500);
+      break;
+
+    case ST_SEND_COLOURS:
+      Wire.onRequest(Request_Event);
       break;
 
     default:
@@ -100,6 +113,7 @@ void State_Stuff() {
 }
 
 void State_Transition(){
+  buttonPress = digitalRead(buttonPin);
   switch(machine_state) {
     case ST_SELECT_COLOUR:
       if (buttonPress == 0) {
@@ -110,13 +124,23 @@ void State_Transition(){
       if (buttonPress == 1) {
         Serial.println(column);
         Serial.println(row);
+        buttonPressed = true;
+      } else {
+        buttonPressed = false;
+      }
+      if (buttonPressed) {
         machine_state = ST_SELECT_COLOUR;
+        buttonPressed = false;
       }
       if (column == 4) {
         row += 1;
         column = 0;
-        machine_state = ST_SELECT_COLOUR;
+        machine_state = ST_SEND_COLOURS;
       }
+      break;
+
+    case ST_SEND_COLOURS:
+      machine_state = ST_SELECT_COLOUR;
       break;
 
     default:
@@ -137,7 +161,7 @@ int Numbers_Colours(uint32_t color) {
 
 void Translate_Colours() {
   for (int i = 0; i < 4; i++) {
-    numbers[i] = Numbers_Colours(playerGuess[i + 1]);
+    numbers[i] = Numbers_Colours(playerGuess[i]);
   }
 }
 

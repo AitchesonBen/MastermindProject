@@ -374,6 +374,9 @@ void Send_Arduino() {
   TimeMessage("Correct place:", String(correctPlace));
   TimeMessage("Wrong place:", String(wrongPlace));
   if (correctPlace == 4) {
+    Wire.beginTransmission(8);
+    Wire.write(9);
+    Wire.endTransmission();
     game_state = ST_ENDING;
   } else {
     game_state = ST_AWAITINPUT;
