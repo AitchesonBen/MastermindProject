@@ -26,7 +26,7 @@ uint32_t playerColourGuess;
 
 int tempNumbers[4] = {1, 2, 3, 4};
 int numbers[4];
-uint32_t mainArray[5][3] = {};
+uint32_t mainArray[20][4] = {};
 int capLimit;
 
 const int rowForArray = 5;
@@ -57,6 +57,7 @@ uint32_t GREEN = 0x07e0;
 uint32_t ORANGE = 0xfbe0;
 uint32_t PINK = 0xf81f;
 
+int num = 0;
 
 void loop() {
   potVal = analogRead(potPin);
@@ -78,19 +79,37 @@ void pickArray(int x) {
   }
 }
 
-void intoArray(int row) {
+void shiftDown() {
+  for (int i = 19; i > 0; i--) {
+    for (int j = 0; j < 4; j++) {
+      mainArray[i][j] = mainArray[i-1][j];
+    }
+  }
+}
+
+void intoArray() {
   for (int i = 0; i < 4; i++) {
-    mainArray[row][i] = playerGuess[i];
+    mainArray[0][i] = playerGuess[i];
     Serial.println(playerGuess[i]);
     Serial.print("Main: ");
-    Serial.println(mainArray[row][i]);
+    Serial.println(mainArray[0][i]);
   }
 }
 
 void callArray() {
-  for (int i = 0; i < 4; i++) {
-    matrix.writePixel(i, row + 1, playerGuess[i]);
+  for (int i = 0; i < 20; i++) {
+    for (int j = 0; j < 4; j++) {
+      matrix.writePixel(j, i + 1, mainArray[i][j]);
+    }
   }
+}
+
+void pushGuess() {
+  shiftDown();
+  intoArray();
+  matrix.clear();
+  callArray();
+  // num++;
 }
 
 void State_Stuff() {
@@ -138,9 +157,7 @@ void State_Transition(){
         buttonPressed = false;
       }
       if (column == 4) {
-        intoArray(row);
-        matrix.clear();
-        callArray();
+        pushGuess();
         // row += 1;
         column = 0;
         machine_state = ST_SEND_COLOURS;
