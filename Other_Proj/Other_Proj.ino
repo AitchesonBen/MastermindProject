@@ -26,6 +26,11 @@ uint32_t playerColourGuess;
 
 int tempNumbers[4] = {1, 2, 3, 4};
 int numbers[4];
+uint32_t mainArray[5][3] = {};
+int capLimit;
+
+const int rowForArray = 5;
+const int columnForArray = 4;
 
 int difficulty = 0;
 
@@ -63,41 +68,41 @@ void loop() {
   }
 }
 
-void Receive_Event(int howMany) {
-  while (1 < Wire.available()) { // loop through all but the last
-    char c = Wire.read();        // receive byte as a character
-    Serial.print(c);             // print the character
+void pickArray(int x) {
+  if (x == 3) {
+    capLimit = 5;
+  } else if (x == 4){
+    capLimit = 3;
+  } else if (x == 5){
+    capLimit = 1;
   }
-  int x = Wire.read();           // receive byte as an integer
-  if (x == 9) {
-    dr = false;
-  } else {
-    difficulty = x;
-    dr = true;
-  }
-  Serial.println(x);             // print the integer
 }
 
-void Request_Event() {
-  Translate_Colours();
-  if (dr) {
-    for (int i = 0; i < 4; i++) {
-      Wire.write(numbers[i]);
-      Serial.println(numbers[i]);
-    }
+void intoArray(int row) {
+  for (int i = 0; i < 4; i++) {
+    mainArray[row][i] = playerGuess[i];
+    Serial.println(playerGuess[i]);
+    Serial.print("Main: ");
+    Serial.println(mainArray[row][i]);
+  }
+}
+
+void callArray() {
+  for (int i = 0; i < 4; i++) {
+    matrix.writePixel(i, row + 1, playerGuess[i]);
   }
 }
 
 void State_Stuff() {
   switch(machine_state) {
     case ST_SELECT_COLOUR:
-      Select_Colour(potVal, column, row);
+      Select_Colour(potVal, column, 0);
       matrix.show();
       break;
     case ST_GUESS_COLOUR:
       playerGuess[column] = playerColourGuess;
-      // Serial.println(playerGuess[column]);
-      matrix.writePixel(column, row, playerGuess[column]);
+      Serial.println(playerGuess[column]);
+      matrix.writePixel(column, 0, playerGuess[column]);
       column += 1;
       delay(500);
       break;
@@ -122,8 +127,8 @@ void State_Transition(){
       break;
     case ST_GUESS_COLOUR:
       if (buttonPress == 1) {
-        Serial.println(column);
-        Serial.println(row);
+        // Serial.println(column);
+        // Serial.println(row);
         buttonPressed = true;
       } else {
         buttonPressed = false;
@@ -133,7 +138,10 @@ void State_Transition(){
         buttonPressed = false;
       }
       if (column == 4) {
-        row += 1;
+        intoArray(row);
+        matrix.clear();
+        callArray();
+        // row += 1;
         column = 0;
         machine_state = ST_SEND_COLOURS;
       }
@@ -200,5 +208,31 @@ void Select_Colour(int potVal, int currentColumn, int currentRow) {
     default:
       Serial.println("OUT OF RANGE");
       break;
+  }
+}
+
+void Receive_Event(int howMany) {
+  while (1 < Wire.available()) { // loop through all but the last
+    char c = Wire.read();        // receive byte as a character
+    Serial.print(c);             // print the character
+  }
+  int x = Wire.read();           // receive byte as an integer
+  if (x == 9) {
+    dr = false;
+  } else {
+    difficulty = x;
+    pickArray(x);
+    dr = true;
+  }
+  Serial.println(x);             // print the integer
+}
+
+void Request_Event() {
+  Translate_Colours();
+  if (dr) {
+    for (int i = 0; i < 4; i++) {
+      Wire.write(numbers[i]);
+      Serial.println(numbers[i]);
+    }
   }
 }
