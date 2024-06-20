@@ -16,8 +16,6 @@ Adafruit_NeoPixel pixels(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800);
 #define ST_EASY 3
 #define ST_MEDIUM 4
 #define ST_HARD 5
-#define ST_PLAYERSELECT 6
-#define ST_DIFFICULTIES 7
 int machine_state;
 
 //second state machine
@@ -78,7 +76,7 @@ void setup() {
   lcd.clear();
   led_state = ST_SELECT_COLOUR;
   randomSeed(analogRead(1));
-  //Rules();
+  Rules();
 }
 
 void loop() {
@@ -109,6 +107,12 @@ void States() {
 void Machine_States() {
   switch(machine_state) {
     case ST_FIRSTLAUNCH:
+      playerGuess[4] = {};
+      playerColourGuess = 0;
+      numbers[4] = {};
+      recievedInputFromArduino[4] = {};
+      game_state = 1;
+      states = 1;
       TimeMessage("Select amount", "of players!");
       PlayerSelect();
       break;
@@ -456,5 +460,10 @@ void Message(String line1, String line2) {
 }
 
 void Winner() {
-  TimeMessage("YOU WON!", "GOOD JOB!");
+  TimeMessage("YOU WON!", "PLAY AGAIN?");
+  buttonState = digitalRead(buttonPin);
+  if (buttonState == 0) {
+    states = 1;
+    machine_state = ST_FIRSTLAUNCH;
+  }
 }
