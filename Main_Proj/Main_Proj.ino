@@ -16,14 +16,14 @@ Adafruit_NeoPixel pixels(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800);
 #define ST_EASY 3
 #define ST_MEDIUM 4
 #define ST_HARD 5
-#define ST_PLAYERSELECT 6
-#define ST_DIFFICULTIES 7
 int machine_state;
 
 //second state machine
 #define ST_NOTSTARTED 0
 #define ST_START 1
 #define ST_PLAYERSTURN 2
+#define ST_ENDING 3
+#define ST_AWAITINPUT 4
 int game_state = 1;
 String difficulty;
 int mode;
@@ -44,6 +44,7 @@ int led_state;
 int sensorValue;
 int buttonState;
 int led = 1;
+int recievedInputFromArduino[4];
 
 #define I2C_ADDR 0x27
 //LiquidCrystal lcd(13, 12, 11, 10, 9, 8);
@@ -62,9 +63,8 @@ uint32_t ORANGE = pixels.Color(255, 125, 0);
 uint32_t PINK = pixels.Color(255, 0, 255);
 
 void setup() {
-  // put your setup code here, to run once:
   pixels.begin();
-  pixels.setBrightness(64);
+  pixels.setBrightness(25);
   pixels.clear();
   pixels.show();
   machine_state = ST_FIRSTLAUNCH;
@@ -76,13 +76,11 @@ void setup() {
   lcd.clear();
   led_state = ST_SELECT_COLOUR;
   randomSeed(analogRead(1));
-  //Rules();
+  Rules();
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
   States();
-  // Serial.println(led_state);
 }
 
 void States() {
@@ -109,6 +107,12 @@ void States() {
 void Machine_States() {
   switch(machine_state) {
     case ST_FIRSTLAUNCH:
+      playerGuess[4] = {};
+      playerColourGuess = 0;
+      numbers[4] = {};
+      recievedInputFromArduino[4] = {};
+      game_state = 1;
+      states = 1;
       TimeMessage("Select amount", "of players!");
       PlayerSelect();
       break;
@@ -171,13 +175,12 @@ void Colour_States() {
     case ST_GUESS_COLOUR:
       Message("Pick the", "Colours");
       playerGuess[led] = playerColourGuess;
-      Serial.println(playerGuess[led]);
       pixels.setPixelColor(led, playerGuess[led]);
       led += 1;
       if (led == 5) {
         states = 2;
       }
-      delay(2000);
+      delay(500);
       break;
   }
 }
@@ -207,6 +210,14 @@ void Game_States() {
       case ST_PLAYERSTURN:
         Translate_Colours();
         Send_Arduino();
+        break;
+
+      case ST_AWAITINPUT:
+        Wait_Arduino();
+        break;
+
+      case ST_ENDING:
+        Winner();
         break;
   }
 }
@@ -248,7 +259,12 @@ void compareNumbers (int received[], int numbers[], int &correctPlace, int &wron
 void Game() {
   TimeMessage("Game will", "START!");
   TimeMessage("Difficulty:", difficulty);
-  game_state = ST_PLAYERSTURN;
+  TimeMessage("GO", "PLAYER");
+  Wire.beginTransmission(8);
+  Wire.write("Difficulty is: ");
+  Wire.write(machine_state);
+  Wire.endTransmission();
+  game_state = ST_AWAITINPUT;
 }
 
 void PlayerSelect() {
@@ -312,7 +328,6 @@ void Random_Colours() {
   int temp;
   for (int i=1; i < 5; i++) {
     temp = random(1024);
-    Serial.println(temp);
     SelectColour(temp, led);
     pixels.show();
     playerGuess[led] = playerColourGuess;
@@ -346,7 +361,6 @@ void Difficulties() {
       Message("Difficulty:", "Hard  ");
       if (buttonState == 0) {
         machine_state = ST_HARD;
-        Serial.println(ST_HARD);
         loop = false;
       }
     }
@@ -355,20 +369,46 @@ void Difficulties() {
 }
 
 void Send_Arduino() {
-  TimeMessage("GO", "PLAYER");
-  Wire.beginTransmission(8);
-  Wire.write("Difficulty is: ");
-  Wire.write(machine_state);
-  Wire.endTransmission();
   for (int i =0; i < 4; i++) {
-    Serial.println(numbers[i]);
+    // Serial.println(numbers[i]);
   }
   int correctPlace, wrongPlace;
   int tempNumbers[] = {1, 2, 3, 4};
-  compareNumbers(tempNumbers, numbers, correctPlace, wrongPlace);
+  compareNumbers(recievedInputFromArduino, numbers, correctPlace, wrongPlace);
   TimeMessage("Correct place:", String(correctPlace));
   TimeMessage("Wrong place:", String(wrongPlace));
+  if (correctPlace == 4) {
+    Wire.beginTransmission(8);
+    Wire.write(9);
+    Wire.endTransmission();
+    game_state = ST_ENDING;
+  } else {
+    game_state = ST_AWAITINPUT;
+  }
   delay(1000);
+}
+
+void Wait_Arduino() {
+  TimeMessage("GO", "PLAYER!!");
+  Wire.requestFrom(8, 4);
+  while (Wire.available()) {
+    for (int i = 0; i < 4; i++) {
+      // Wire.readBytes((char*)&recievedInputFromArduino[i], sizeof(int));
+      int c = Wire.read();
+      recievedInputFromArduino[i] = c;
+      Serial.println(recievedInputFromArduino[i]);
+    }
+  }
+  bool isFilled = true;
+  for (int i = 0; i < 4; i++) {
+    if(recievedInputFromArduino[i] == 0) {
+      isFilled = false;
+      break;
+    }
+  }
+  if (isFilled) {
+    game_state = 2;
+  }
 }
 
 int Numbers_Colours(uint32_t color) {
@@ -417,4 +457,13 @@ void Message(String line1, String line2) {
   lcd.print(line1);
   lcd.setCursor(0, 1);
   lcd.print(line2);
+}
+
+void Winner() {
+  TimeMessage("YOU WON!", "PLAY AGAIN?");
+  buttonState = digitalRead(buttonPin);
+  if (buttonState == 0) {
+    states = 1;
+    machine_state = ST_FIRSTLAUNCH;
+  }
 }
