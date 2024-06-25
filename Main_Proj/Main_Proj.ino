@@ -43,7 +43,7 @@ int led_state;
 
 int sensorValue;
 int buttonState;
-int led = 1;
+int led = 0;
 int recievedInputFromArduino[4];
 
 #define I2C_ADDR 0x27
@@ -177,7 +177,7 @@ void Colour_States() {
       playerGuess[led] = playerColourGuess;
       pixels.setPixelColor(led, playerGuess[led]);
       led += 1;
-      if (led == 5) {
+      if (led == 4) {
         states = 2;
       }
       delay(500);
@@ -224,7 +224,7 @@ void Game_States() {
 
 void Translate_Colours() {
   for (int i = 0; i < 4; i++) {
-    numbers[i] = Numbers_Colours(playerGuess[i + 1]);
+    numbers[i] = Numbers_Colours(playerGuess[i]);
   }
 }
 
@@ -460,10 +460,10 @@ void Message(String line1, String line2) {
 }
 
 void Winner() {
-  TimeMessage("YOU WON!", "PLAY AGAIN?");
+  TimeMessage("YOU WON!", "GOOD JOB!");
   buttonState = digitalRead(buttonPin);
-  if (buttonState == 0) {
-    states = 1;
-    machine_state = ST_FIRSTLAUNCH;
-  }
+  // if (buttonState == 0) {
+  //   states = 1;
+  //   machine_state = ST_FIRSTLAUNCH;
+  // }
 }
