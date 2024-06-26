@@ -47,7 +47,6 @@ int led = 0;
 int recievedInputFromArduino[4];
 
 #define I2C_ADDR 0x27
-//LiquidCrystal lcd(13, 12, 11, 10, 9, 8);
 LiquidCrystal_I2C lcd(I2C_ADDR, 16, 2);
 
 uint32_t playerGuess[4] = {};     // store players colour guesses
@@ -107,6 +106,7 @@ void States() {
 void Machine_States() {
   switch(machine_state) {
     case ST_FIRSTLAUNCH:
+      //Setting every state/variable to the beginning
       playerGuess[4] = {};
       playerColourGuess = 0;
       numbers[4] = {};
@@ -118,6 +118,7 @@ void Machine_States() {
       break;
 
     case ST_SINGLEPLAYER:
+      //Sets singleplayer mode to send to other arudino and displays
       mode = ST_SINGLEPLAYER;
       TimeMessage("Selected", "1 Player");
       Difficulties();   
@@ -130,6 +131,7 @@ void Machine_States() {
       break;
 
     case ST_EASY:
+      //Sets difficulty mode to send to other arduino and displays
       difficulty = "Easy";
       TimeMessage("Selected", "Easy mode");
       if (mode == ST_MULTIPLAYER) {
@@ -163,6 +165,7 @@ void Machine_States() {
 }
 
 void Colour_States() {
+  //Colour states that go through selecting colours, and displaying colours
   sensorValue = analogRead(A0);
   switch(led_state) {
     case ST_SELECT_COLOUR:
@@ -186,6 +189,7 @@ void Colour_States() {
 }
 
 void Another_Colour() {
+  //transition state machine for previous function
   buttonState = digitalRead(buttonPin);
   switch(led_state) {
     case ST_SELECT_COLOUR:
@@ -208,6 +212,7 @@ void Game_States() {
         Game();
         break;
       case ST_PLAYERSTURN:
+        //Translates Colours to Numbers and sends to other arduino
         Translate_Colours();
         Send_Arduino();
         break;
@@ -235,6 +240,7 @@ void compareNumbers (int received[], int numbers[], int &correctPlace, int &wron
   bool checkedReceived[4]= { false };
   bool checkedPredefined[4] = { false };
 
+  //for loops that compares guess and returns the value
   for (int i = 0; i < 4; i++) {
     if (received[i] == numbers[i]) {
       correctPlace++;
@@ -257,6 +263,7 @@ void compareNumbers (int received[], int numbers[], int &correctPlace, int &wron
 }
 
 void Game() {
+  //transitioning from difficulty to starting game
   TimeMessage("Game will", "START!");
   TimeMessage("Difficulty:", difficulty);
   TimeMessage("GO", "PLAYER");
@@ -269,6 +276,7 @@ void Game() {
 
 void PlayerSelect() {
   bool loop = true;
+  //loop to pick mode
   while(loop) {
     sensorValue = analogRead(A0);
     buttonState = digitalRead(buttonPin);
@@ -291,6 +299,7 @@ void PlayerSelect() {
 }
 
 void SelectColour(int value, int currentLED) {
+  //switch case that has all the colour choosing for switch
   switch(value) {
     case 0 ... 171:
       pixels.setPixelColor(currentLED, RED);
@@ -326,6 +335,7 @@ void SelectColour(int value, int currentLED) {
 
 void Random_Colours() {
   int temp;
+  //function that randomly picks 4 colours for 1 player
   for (int i=1; i < 5; i++) {
     temp = random(1024);
     SelectColour(temp, led);
@@ -339,6 +349,7 @@ void Random_Colours() {
 }
 
 void Difficulties() {
+  //difficulties loop to select them
   bool loop = true;
   while(loop) {
     sensorValue = analogRead(A0);
@@ -369,9 +380,7 @@ void Difficulties() {
 }
 
 void Send_Arduino() {
-  for (int i =0; i < 4; i++) {
-    // Serial.println(numbers[i]);
-  }
+  //transmitting to other arduino to stop if won
   int correctPlace, wrongPlace;
   int tempNumbers[] = {1, 2, 3, 4};
   compareNumbers(recievedInputFromArduino, numbers, correctPlace, wrongPlace);
@@ -389,6 +398,7 @@ void Send_Arduino() {
 }
 
 void Wait_Arduino() {
+  //awaits inputs from arduino to display the guess
   TimeMessage("GO", "PLAYER!!");
   Wire.requestFrom(8, 4);
   while (Wire.available()) {
@@ -411,6 +421,7 @@ void Wait_Arduino() {
   }
 }
 
+//Turns Colours into Numbers
 int Numbers_Colours(uint32_t color) {
   if (color == RED) return 1;
   if (color == BLUE) return 2;
@@ -421,6 +432,7 @@ int Numbers_Colours(uint32_t color) {
   return -1;
 }
 
+//Turns Numbers into Colours
 uint32_t Colours_Numbers(int number) {
   if (number == 1) return RED;
   if (number == 2) return BLUE;
@@ -443,6 +455,7 @@ void Rules() {
   TimeMessage("Guess until", "you can win!");
 }
 
+//Basic Method to repeat Messages time based
 void TimeMessage(String line1, String line2) {
   lcd.setCursor(0, 0);
   lcd.print(line1);
@@ -452,6 +465,7 @@ void TimeMessage(String line1, String line2) {
   lcd.clear();
 }
 
+//Messages that await next call
 void Message(String line1, String line2) {
   lcd.setCursor(0, 0);
   lcd.print(line1);
@@ -459,11 +473,8 @@ void Message(String line1, String line2) {
   lcd.print(line2);
 }
 
+//Winning the Game
 void Winner() {
   TimeMessage("YOU WON!", "GOOD JOB!");
   buttonState = digitalRead(buttonPin);
-  // if (buttonState == 0) {
-  //   states = 1;
-  //   machine_state = ST_FIRSTLAUNCH;
-  // }
 }

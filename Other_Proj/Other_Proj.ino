@@ -5,6 +5,7 @@
 
 #define PIN 6
 
+//Neomatrix initializing
 Adafruit_NeoMatrix matrix = Adafruit_NeoMatrix(4, 6, PIN,
   NEO_MATRIX_TOP     + NEO_MATRIX_RIGHT +
   NEO_MATRIX_COLUMNS + NEO_MATRIX_ZIGZAG,
@@ -46,6 +47,7 @@ void setup() {
   machine_state = ST_SELECT_COLOUR;
 }
 
+//Colours set
 uint32_t RED = 0xf800;
 uint32_t BLUE = 0x001f;
 uint32_t YELLOW = 0xffe0;
@@ -56,6 +58,7 @@ uint32_t PINK = 0xf81f;
 void loop() {
   potVal = analogRead(potPin);
   buttonPress = digitalRead(buttonPin);
+  //Recognises when to start displaying colours
   if (dr) {
     State_Stuff();
     State_Transition();
@@ -63,6 +66,7 @@ void loop() {
   }
 }
 
+//Determines ho many guesses you see from difficulty recieved
 void pickArray(int x) {
   if (x == 3) {
     capLimit = 5;
@@ -73,6 +77,7 @@ void pickArray(int x) {
   }
 }
 
+//moves the colours down the array
 void shiftDown() {
   for (int i = 19; i > 0; i--) {
     for (int j = 0; j < 4; j++) {
@@ -81,12 +86,14 @@ void shiftDown() {
   }
 }
 
+//inserts guess into array
 void intoArray() {
   for (int i = 0; i < 4; i++) {
     mainArray[0][i] = playerGuess[i];
   }
 }
 
+//writes the array matrix
 void callArray() {
   for (int i = 0; i < capLimit; i++) {
     for (int j = 0; j < 4; j++) {
@@ -95,6 +102,7 @@ void callArray() {
   }
 }
 
+//does all of the above
 void pushGuess() {
   shiftDown();
   intoArray();
@@ -102,6 +110,7 @@ void pushGuess() {
   callArray();
 }
 
+//State to pick colours and display them
 void State_Stuff() {
   switch(machine_state) {
     case ST_SELECT_COLOUR:
@@ -160,6 +169,7 @@ void State_Transition(){
   }
 }
 
+//Colour to number translation
 int Numbers_Colours(uint32_t color) {
   if (color == RED) return 1;
   if (color == BLUE) return 2;
@@ -214,6 +224,7 @@ void Select_Colour(int potVal, int currentColumn, int currentRow) {
   }
 }
 
+//recieves difficulty from Master
 void Receive_Event(int howMany) {
   while (1 < Wire.available()) { // loop through all but the last
     char c = Wire.read();        // receive byte as a character
@@ -231,6 +242,7 @@ void Receive_Event(int howMany) {
   Serial.println(x);             // print the integer
 }
 
+//Sends guesses to master
 void Request_Event() {
   Translate_Colours();
   if (dr) {
